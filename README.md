@@ -17,3 +17,7 @@
 ## Құжаттама
 - [Талаптар](docs/requirements.md)
 - [Use case](docs/use-case.md)
+
+## Қолданылатын технологиялар
+Telegram Bot API, веб-панель (React), серверлік бөлік (Python/FastAPI),
+PostgreSQL дерекқоры, Push/SMS хабарлама сервисі.
