@@ -1,4 +1,3 @@
--- Тестілік деректер (schema.sql орындалған соң іске қос)
 USE dorm_service;
 GO
 
@@ -7,7 +6,6 @@ INSERT INTO rooms (building, room_number) VALUES
     (N'1-жатақхана', N'102'),
     (N'1-жатақхана', N'205');
 
--- role_id: 1 = student, 2 = commandant, 3 = technician, 4 = admin
 INSERT INTO users (full_name, email, telegram_id, role_id, room_id, specialty) VALUES
     (N'Айгерім Нұрлан',  N'aigerim@example.com',  100000001, 1, 1, NULL),
     (N'Данияр Сәрсен',   N'daniyar@example.com',  100000002, 1, 2, NULL),
@@ -17,10 +15,6 @@ INSERT INTO users (full_name, email, telegram_id, role_id, room_id, specialty) V
     (N'Серік Ахмет',     N'serik@example.com',    100000006, 3, NULL, N'plumber'),
     (N'Жүйе әкімшісі',   N'admin@example.com',    100000007, 4, NULL, NULL);
 
--- fault_type_id: 1 Электр, 2 Су, 3 Жылу, 4 Жиһаз
--- priority_id: 1 шұғыл, 2 орташа, 3 төмен
--- status_id: 1 Жаңа, 2 Орындалуда, 3 Материал күтуде, 4 Орындалды,
---            5 Жабылды, 6 Қайта ашылды, 7 Мерзімі өткен
 INSERT INTO requests
     (student_id, room_id, fault_type_id, priority_id, status_id, technician_id,
      description, created_at, deadline, closed_at)
