@@ -89,7 +89,7 @@ GO
 -- Бастапқы деректер
 -- roles: 1 = student, 2 = commandant, 3 = technician, 4 = admin
 INSERT INTO roles (name) VALUES
-    (N'student'),
+    (N'stud'),
     (N'commandant'),
     (N'technician'),
     (N'admin');
