@@ -1,14 +1,12 @@
 USE dorm_service;
 GO
 
--- Қайта орындағанда ескі деректерді өшіру (кері ретпен)
 DELETE FROM request_history;
 DELETE FROM requests;
 DELETE FROM users;
 DELETE FROM rooms;
 GO
 
--- 1. rooms (15)
 INSERT INTO rooms (id, building, room_number, capacity) VALUES
     (1,  N'1-жатақхана', N'101', 2),
     (2,  N'1-жатақхана', N'102', 2),
@@ -26,7 +24,6 @@ INSERT INTO rooms (id, building, room_number, capacity) VALUES
     (14, N'2-жатақхана', N'203', 3),
     (15, N'2-жатақхана', N'204', 2);
 
--- 2. users (15): 9 студент, 2 комендант, 3 техник, 1 әкімші
 INSERT INTO users (id, full_name, email, phone, role, room_id, specialty) VALUES
     (1,  N'Айгерім Нұрлан',   N'aigerim@example.com',  N'+7 701 000 00 01', 'student',    1,    NULL),
     (2,  N'Данияр Сәрсен',    N'daniyar@example.com',  N'+7 701 000 00 02', 'student',    2,    NULL),
@@ -44,7 +41,6 @@ INSERT INTO users (id, full_name, email, phone, role, room_id, specialty) VALUES
     (14, N'Қанат Дәулет',     N'kanat@example.com',    N'+7 701 000 00 14', 'technician', NULL, N'ұста'),
     (15, N'Жүйе әкімшісі',    N'admin@example.com',    N'+7 701 000 00 15', 'admin',      NULL, NULL);
 
--- 3. requests (15)
 INSERT INTO requests
     (id, student_id, room_id, technician_id, fault_type, priority, status, description, created_at, closed_at, rating)
 VALUES
