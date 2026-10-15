@@ -1,116 +1,76 @@
--- Dorm Service: дерекқор құрылымы (Microsoft SQL Server)
+-- Dorm Service: қарапайым дерекқор (SQL Server)
 
-IF DB_ID('dorm_service') IS NULL
-    CREATE DATABASE dorm_service;
+USE master;
+GO
+
+IF DB_ID('dorm_service') IS NOT NULL
+BEGIN
+    ALTER DATABASE dorm_service SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE dorm_service;
+END
+GO
+
+CREATE DATABASE dorm_service;
 GO
 
 USE dorm_service;
 GO
 
-CREATE TABLE roles (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    name NVARCHAR(30) NOT NULL UNIQUE          -- student, commandant, technician, admin
-);
-
+-- 1. Бөлмелер
 CREATE TABLE rooms (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    building NVARCHAR(20) NOT NULL,
+    id INT PRIMARY KEY,
+    building NVARCHAR(30) NOT NULL,
     room_number NVARCHAR(10) NOT NULL,
-    UNIQUE (building, room_number)
+    capacity INT NOT NULL,
+    CONSTRAINT ck_rooms_capacity CHECK (capacity BETWEEN 1 AND 6)          -- CHECK
 );
 
+-- 2. Пайдаланушылар
 CREATE TABLE users (
-    id INT IDENTITY(1,1) PRIMARY KEY,
+    id INT PRIMARY KEY,
     full_name NVARCHAR(100) NOT NULL,
-    email NVARCHAR(100) NULL,
-    telegram_id BIGINT NULL,
-    role_id INT NOT NULL REFERENCES roles(id),
-    room_id INT NULL REFERENCES rooms(id),     -- студент үшін
-    specialty NVARCHAR(30) NULL,               -- техник үшін: electrician, plumber, carpenter
-    created_at DATETIME2 NOT NULL DEFAULT SYSDATETIME()
-);
-GO
-
--- SQL Server-де UNIQUE бағанда тек бір NULL рұқсат, сондықтан фильтрлі индекс
-CREATE UNIQUE INDEX ux_users_email ON users(email) WHERE email IS NOT NULL;
-CREATE UNIQUE INDEX ux_users_telegram ON users(telegram_id) WHERE telegram_id IS NOT NULL;
-GO
-
-CREATE TABLE fault_types (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    name NVARCHAR(50) NOT NULL,                -- электр, су, жылу
-    specialty NVARCHAR(30) NOT NULL            -- қай маманға бағытталады
+    email NVARCHAR(100) NOT NULL UNIQUE,
+    phone NVARCHAR(20) NULL,
+    role NVARCHAR(20) NOT NULL,
+    room_id INT NULL,
+    specialty NVARCHAR(20) NULL,
+    CONSTRAINT ck_users_role CHECK (role IN ('student', 'commandant', 'technician', 'admin')),   -- CHECK
+    CONSTRAINT fk_users_room FOREIGN KEY (room_id) REFERENCES rooms(id)                          -- FOREIGN KEY
 );
 
-CREATE TABLE priorities (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    name NVARCHAR(20) NOT NULL UNIQUE,         -- шұғыл, орташа, төмен
-    sla_hours INT NOT NULL                     -- орындау мерзімі (сағат)
-);
-
-CREATE TABLE statuses (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    name NVARCHAR(30) NOT NULL UNIQUE
-);
-
+-- 3. Өтінімдер
 CREATE TABLE requests (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    student_id INT NOT NULL REFERENCES users(id),
-    room_id INT NOT NULL REFERENCES rooms(id),
-    fault_type_id INT NOT NULL REFERENCES fault_types(id),
-    priority_id INT NOT NULL REFERENCES priorities(id),
-    status_id INT NOT NULL REFERENCES statuses(id),
-    technician_id INT NULL REFERENCES users(id),
-    description NVARCHAR(MAX) NOT NULL,
-    photo_url NVARCHAR(255) NULL,
-    created_at DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
-    deadline DATETIME2 NULL,
-    closed_at DATETIME2 NULL
+    id INT PRIMARY KEY,
+    student_id INT NOT NULL,
+    room_id INT NOT NULL,
+    technician_id INT NULL,
+    fault_type NVARCHAR(20) NOT NULL,
+    priority NVARCHAR(20) NOT NULL,
+    status NVARCHAR(20) NOT NULL,
+    description NVARCHAR(200) NOT NULL,
+    created_at DATETIME2 NOT NULL,
+    closed_at DATETIME2 NULL,
+    rating INT NULL,
+    CONSTRAINT fk_requests_student FOREIGN KEY (student_id) REFERENCES users(id),               -- FOREIGN KEY
+    CONSTRAINT fk_requests_room FOREIGN KEY (room_id) REFERENCES rooms(id),                     -- FOREIGN KEY
+    CONSTRAINT fk_requests_technician FOREIGN KEY (technician_id) REFERENCES users(id),         -- FOREIGN KEY
+    CONSTRAINT ck_requests_fault CHECK (fault_type IN (N'электр', N'су', N'жылу', N'жиһаз')),  -- CHECK
+    CONSTRAINT ck_requests_priority CHECK (priority IN (N'шұғыл', N'орташа', N'төмен')),        -- CHECK
+    CONSTRAINT ck_requests_status CHECK (status IN (N'Жаңа', N'Орындалуда', N'Орындалды', N'Жабылды', N'Қайта ашылды')),  -- CHECK
+    CONSTRAINT ck_requests_rating CHECK (rating IS NULL OR (rating BETWEEN 1 AND 5 AND status = N'Жабылды')),            -- CHECK
+    CONSTRAINT ck_requests_dates CHECK (closed_at IS NULL OR closed_at >= created_at)           -- CHECK
 );
 
+-- 4. Өтінім тарихы
 CREATE TABLE request_history (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    request_id INT NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
-    status_id INT NOT NULL REFERENCES statuses(id),
-    changed_by INT NULL REFERENCES users(id),
-    comment NVARCHAR(MAX) NULL,
-    changed_at DATETIME2 NOT NULL DEFAULT SYSDATETIME()
+    id INT PRIMARY KEY,
+    request_id INT NOT NULL,
+    status NVARCHAR(20) NOT NULL,
+    changed_by INT NOT NULL,
+    comment NVARCHAR(200) NULL,
+    changed_at DATETIME2 NOT NULL,
+    CONSTRAINT fk_history_request FOREIGN KEY (request_id) REFERENCES requests(id),             -- FOREIGN KEY
+    CONSTRAINT fk_history_user FOREIGN KEY (changed_by) REFERENCES users(id),                   -- FOREIGN KEY
+    CONSTRAINT ck_history_status CHECK (status IN (N'Жаңа', N'Орындалуда', N'Орындалды', N'Жабылды', N'Қайта ашылды'))  -- CHECK
 );
-
-CREATE TABLE ratings (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    request_id INT NOT NULL UNIQUE REFERENCES requests(id),
-    score INT NOT NULL CHECK (score BETWEEN 1 AND 5),
-    comment NVARCHAR(MAX) NULL,
-    created_at DATETIME2 NOT NULL DEFAULT SYSDATETIME()
-);
-GO
-
--- Бастапқы деректер
--- roles: 1 = student, 2 = commandant, 3 = technician, 4 = admin
-INSERT INTO roles (name) VALUES
-    (N'stud'),
-    (N'commandant'),
-    (N'technician'),
-    (N'admin');
-
-INSERT INTO priorities (name, sla_hours) VALUES
-    (N'шұғыл', 2),
-    (N'орташа', 24),
-    (N'төмен', 72);
-
-INSERT INTO statuses (name) VALUES
-    (N'Жаңа'),
-    (N'Орындалуда'),
-    (N'Материал күтуде'),
-    (N'Орындалды'),
-    (N'Жабылды'),
-    (N'Қайта ашылды'),
-    (N'Мерзімі өткен');
-
-INSERT INTO fault_types (name, specialty) VALUES
-    (N'Электр', N'electrician'),
-    (N'Су', N'plumber'),
-    (N'Жылу', N'plumber'),
-    (N'Жиһаз', N'carpenter');
 GO
