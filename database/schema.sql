@@ -1,5 +1,3 @@
--- Dorm Service: қарапайым дерекқор (SQL Server)
-
 USE master;
 GO
 
@@ -16,61 +14,86 @@ GO
 USE dorm_service;
 GO
 
--- 1. Бөлмелер
+
+CREATE TABLE roles (
+    id INT PRIMARY KEY,
+    name NVARCHAR(20) NOT NULL UNIQUE
+);
+
+
 CREATE TABLE rooms (
     id INT PRIMARY KEY,
     building NVARCHAR(30) NOT NULL,
     room_number NVARCHAR(10) NOT NULL,
     capacity INT NOT NULL,
-    CONSTRAINT ck_rooms_capacity CHECK (capacity BETWEEN 1 AND 6)          -- CHECK
+    CONSTRAINT ck_rooms_capacity CHECK (capacity BETWEEN 1 AND 6)
 );
 
--- 2. Пайдаланушылар
 CREATE TABLE users (
     id INT PRIMARY KEY,
     full_name NVARCHAR(100) NOT NULL,
     email NVARCHAR(100) NOT NULL UNIQUE,
     phone NVARCHAR(20) NULL,
-    role NVARCHAR(20) NOT NULL,
+    role_id INT NOT NULL,
     room_id INT NULL,
     specialty NVARCHAR(20) NULL,
-    CONSTRAINT ck_users_role CHECK (role IN ('student', 'commandant', 'technician', 'admin')),   -- CHECK
-    CONSTRAINT fk_users_room FOREIGN KEY (room_id) REFERENCES rooms(id)                          -- FOREIGN KEY
+    CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id),
+    CONSTRAINT fk_users_room FOREIGN KEY (room_id) REFERENCES rooms(id)
 );
 
--- 3. Өтінімдер
+CREATE TABLE aqau_turleri (
+    id INT PRIMARY KEY,
+    name NVARCHAR(20) NOT NULL UNIQUE
+);
+
+CREATE TABLE priorities (
+    id INT PRIMARY KEY,
+    name NVARCHAR(20) NOT NULL UNIQUE
+);
+
+CREATE TABLE statuses (
+    id INT PRIMARY KEY,
+    name NVARCHAR(20) NOT NULL UNIQUE
+);
+
 CREATE TABLE requests (
     id INT PRIMARY KEY,
     student_id INT NOT NULL,
     room_id INT NOT NULL,
     technician_id INT NULL,
-    fault_type NVARCHAR(20) NOT NULL,
-    priority NVARCHAR(20) NOT NULL,
-    status NVARCHAR(20) NOT NULL,
+    aqau_turi_id INT NOT NULL,
+    priority_id INT NOT NULL,
+    status_id INT NOT NULL,
     description NVARCHAR(200) NOT NULL,
     created_at DATETIME2 NOT NULL,
     closed_at DATETIME2 NULL,
-    rating INT NULL,
-    CONSTRAINT fk_requests_student FOREIGN KEY (student_id) REFERENCES users(id),               -- FOREIGN KEY
-    CONSTRAINT fk_requests_room FOREIGN KEY (room_id) REFERENCES rooms(id),                     -- FOREIGN KEY
-    CONSTRAINT fk_requests_technician FOREIGN KEY (technician_id) REFERENCES users(id),         -- FOREIGN KEY
-    CONSTRAINT ck_requests_fault CHECK (fault_type IN (N'электр', N'су', N'жылу', N'жиһаз')),  -- CHECK
-    CONSTRAINT ck_requests_priority CHECK (priority IN (N'шұғыл', N'орташа', N'төмен')),        -- CHECK
-    CONSTRAINT ck_requests_status CHECK (status IN (N'Жаңа', N'Орындалуда', N'Орындалды', N'Жабылды', N'Қайта ашылды')),  -- CHECK
-    CONSTRAINT ck_requests_rating CHECK (rating IS NULL OR (rating BETWEEN 1 AND 5 AND status = N'Жабылды')),            -- CHECK
-    CONSTRAINT ck_requests_dates CHECK (closed_at IS NULL OR closed_at >= created_at)           -- CHECK
+    CONSTRAINT fk_requests_student FOREIGN KEY (student_id) REFERENCES users(id),
+    CONSTRAINT fk_requests_room FOREIGN KEY (room_id) REFERENCES rooms(id),
+    CONSTRAINT fk_requests_technician FOREIGN KEY (technician_id) REFERENCES users(id),
+    CONSTRAINT fk_requests_aqau FOREIGN KEY (aqau_turi_id) REFERENCES aqau_turleri(id),
+    CONSTRAINT fk_requests_priority FOREIGN KEY (priority_id) REFERENCES priorities(id),
+    CONSTRAINT fk_requests_status FOREIGN KEY (status_id) REFERENCES statuses(id),
+    CONSTRAINT ck_requests_dates CHECK (closed_at IS NULL OR closed_at >= created_at)
 );
 
--- 4. Өтінім тарихы
 CREATE TABLE request_history (
     id INT PRIMARY KEY,
     request_id INT NOT NULL,
-    status NVARCHAR(20) NOT NULL,
+    status_id INT NOT NULL,
     changed_by INT NOT NULL,
     comment NVARCHAR(200) NULL,
     changed_at DATETIME2 NOT NULL,
-    CONSTRAINT fk_history_request FOREIGN KEY (request_id) REFERENCES requests(id),             -- FOREIGN KEY
-    CONSTRAINT fk_history_user FOREIGN KEY (changed_by) REFERENCES users(id),                   -- FOREIGN KEY
-    CONSTRAINT ck_history_status CHECK (status IN (N'Жаңа', N'Орындалуда', N'Орындалды', N'Жабылды', N'Қайта ашылды'))  -- CHECK
+    CONSTRAINT fk_history_request FOREIGN KEY (request_id) REFERENCES requests(id),
+    CONSTRAINT fk_history_status FOREIGN KEY (status_id) REFERENCES statuses(id),
+    CONSTRAINT fk_history_user FOREIGN KEY (changed_by) REFERENCES users(id)
+);
+
+CREATE TABLE ratings (
+    id INT PRIMARY KEY,
+    request_id INT NOT NULL UNIQUE,
+    score INT NOT NULL,
+    comment NVARCHAR(200) NULL,
+    CONSTRAINT fk_ratings_request FOREIGN KEY (request_id) REFERENCES requests(id),
+    CONSTRAINT ck_ratings_score CHECK (score BETWEEN 1 AND 5)
 );
 GO
